@@ -1,0 +1,66 @@
+# Input file for simulation of NMP with NPT ensemble
+# Andrew Ricardo Puente, October 2019 
+
+# ------------------------ INITIALIZATION ----------------------------
+units 		real
+dimension	3
+boundary	p	p	p
+atom_style	full
+
+# ------------------------ FORCE FIELDS ------------------------------
+atom_style      full
+bond_style      harmonic
+angle_style     harmonic
+dihedral_style  opls
+improper_style  harmonic
+pair_style      soft 12
+
+kspace_style    ewald 1.0e-6
+pair_style      lj/cut/coul/long 15.0 15.5
+#need to quadrically smooth over last .5 A
+
+# ----------------------- LOAD IN NMP BOX ----------------------------
+read_data pfe
+# ------------------------- SETTINGS ---------------------------------
+
+######################################
+# MINIMIZATION
+min_style cg
+minimize 1.0e-4 1.0e-6 100 1000
+
+
+# EQUILIBRATION
+reset_timestep	0
+timestep 1.0 #fs
+velocity all create 298.15 12345
+fix 1 all npt temp 298.15 298.15 100.0 iso 1.0 1.0 1000.0
+
+# Set thermo output
+thermo 500
+thermo_style custom step temp vol press pe ke lx evdwl ecoul ebond eangle edihed elong etail cpu
+
+# No intermolecular interactions
+#neigh_modify exclude molecule/inter all
+
+# Set trajectory output
+dump trj all custom 500 equil.*.lammpstrj id mol type x y z ix iy iz
+log equil.log 
+
+#run equilibration
+run_style verlet
+run 1000000
+
+write_restart restart.equil
+######################################
+undump trj
+dump trj all custom 5000 run.*.lammpstrj id mol type x y z ix iy iz
+log run1.log
+
+run 9000000
+
+write_restart restart.run1
+
+#####################################
+# SIMULATION DONE
+
+print "All done"
